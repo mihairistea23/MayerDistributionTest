@@ -384,6 +384,9 @@ async function flushPendingSync(){
   toast('Sincronizarea a esuat. Verifica internetul si modifica din nou dupa reconectare.');
  }
 }
+window.addEventListener('online',()=>{
+ if(syncReady && (pendingLists || pendingProgramUpserts.size || pendingProgramDeletes.size))flushPendingSync();
+});
 function initializeAuthGate(){
  showAuthGate('Se verifica sesiunea...');
  getFirebaseSync().then(sync=>{
