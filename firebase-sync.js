@@ -1,6 +1,6 @@
-// MayerDistribution Firebase sync service - staged implementation.
-// This module is not loaded by index.html yet. It makes no network calls until
-// createFirebaseSync() is called and the user explicitly signs in / uploads data.
+// MayerDistribution Firebase sync service.
+// The UI loads this module after reading the bundled configuration and signing in.
+// Firestore access is scoped to the currently authenticated Firebase user.
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {
   getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
