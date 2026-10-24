@@ -33,6 +33,10 @@ pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font
 
 #authGate{position:fixed;inset:0;z-index:100;background:#f3f4f6;display:flex;align-items:center;justify-content:center;padding:20px}
 #authGate[hidden]{display:none}
+#authGate.auth-loading .auth-card{position:relative;min-height:76px}
+#authGate.auth-loading .auth-card>*{visibility:hidden}
+#authGate.auth-loading .auth-card:after{content:"Se verifica sesiunea...";visibility:visible;position:absolute;inset:24px 18px;display:flex;align-items:center;justify-content:center;color:#6b7280;font-size:14px}
+
 .auth-card{width:100%;max-width:420px;background:#fff;border-radius:18px;padding:24px;box-shadow:0 8px 30px #00000012}
 .auth-card h2{font-size:22px;margin:0 0 6px}.auth-card p{font-size:14px;line-height:1.45;color:#6b7280;margin:0 0 18px}
 .auth-card label{margin-top:12px}.auth-card .btn{width:100%;margin-top:14px}
@@ -41,7 +45,7 @@ body.auth-locked>header,body.auth-locked>#app,body.auth-locked>nav,body.auth-loc
 </style>
 </head>
 <body>
-<header><h1>Mayer Distribution</h1><div class="sub">Program Transport by Mihai R. © <span id="appVersion">v1.5</span></div></header>
+<header><h1>Mayer Distribution</h1><div class="sub">Program Transport by Mihai R. © <span id="appVersion">v1.6</span></div></header>
 <div id="authGate" hidden>
  <form class="auth-card" onsubmit="event.preventDefault();loginAtStartup()">
   <h2>Mayer Distribution</h2>
@@ -294,13 +298,20 @@ async function getFirebaseSync(){
  return firebaseSyncInstance;
 }
 function setAuthStatus(message){const e=document.getElementById('authStatus');if(e)e.textContent=message;}
+function showAuthLoading(message){
+ syncReady=false;document.body.classList.add('auth-locked');
+ const gate=document.getElementById('authGate');
+ gate.classList.add('auth-loading');gate.hidden=false;
+ setAuthStatus(message||'Se verifica sesiunea...');
+}
 function showAuthGate(message){
  syncReady=false;document.body.classList.add('auth-locked');
- document.getElementById('authGate').hidden=false;
+ const gate=document.getElementById('authGate');
+ gate.classList.remove('auth-loading');gate.hidden=false;
  const b=document.getElementById('loginButton');if(b)b.disabled=false;
  setAuthStatus(message||'Introdu emailul si parola pentru a continua.');
 }
-function hideAuthGate(){document.body.classList.remove('auth-locked');document.getElementById('authGate').hidden=true;}
+function hideAuthGate(){const gate=document.getElementById('authGate');gate.classList.remove('auth-loading');document.body.classList.remove('auth-locked');gate.hidden=true;}
 async function loginAtStartup(){
  const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;
  if(!email||!password)return;
@@ -318,7 +329,7 @@ async function logoutFromApp(){
  }catch(err){console.error(err);toast('Deconectarea a esuat: '+(err.message||''));}
 }
 async function startAuthenticatedApp(user){
- if(authStartInProgress)return;authStartInProgress=true;showAuthGate('Se incarca si sincronizeaza datele...');
+ if(authStartInProgress)return;authStartInProgress=true;showAuthLoading('Se incarca si sincronizeaza datele...');
  try{
   const sync=await getFirebaseSync();
   for(const stop of unsubscribers){try{stop()}catch(_e){}}unsubscribers=[];
@@ -388,7 +399,7 @@ window.addEventListener('online',()=>{
  if(syncReady && (pendingLists || pendingProgramUpserts.size || pendingProgramDeletes.size))flushPendingSync();
 });
 function initializeAuthGate(){
- showAuthGate('Se verifica sesiunea...');
+ showAuthLoading('Se verifica sesiunea...');
  getFirebaseSync().then(sync=>{
   if(authListenerAttached)return;authListenerAttached=true;
   sync.onAuthStateChanged(user=>{
