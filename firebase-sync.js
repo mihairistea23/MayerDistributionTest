@@ -136,6 +136,49 @@ export function createFirebaseSync(firebaseConfig) {
       return { importedPrograms: snapshot.programs.length };
     },
 
+    // Manual merge: local records win on matching IDs; cloud-only programs are returned for the UI to merge locally.
+    // This deliberately does not propagate deletions. It is an explicit merge, not full bidirectional sync.
+    async mergeSnapshot(snapshot) {
+      const user = requireUser();
+      validateSnapshot(snapshot);
+      const cloud = await this.readCloudSnapshot();
+      const localById = new Map(snapshot.programs.map(program => [String(program.id), program]));
+      const cloudOnlyPrograms = cloud.programs.filter(program => !localById.has(String(program.id)));
+      const mergedPrograms = [...snapshot.programs, ...cloudOnlyPrograms];
+      const batchGroups = chunks(mergedPrograms.map(program => ({ id: String(program.id), program })), MAX_BATCH_WRITES);
+
+      await setDoc(listsRef(user.uid), {
+        values: snapshot.lists,
+        updatedAt: serverTimestamp(),
+        updatedBy: user.uid
+      });
+      for (const group of batchGroups) {
+        const batch = writeBatch(db);
+        for (const item of group) {
+          batch.set(doc(programsRef(user.uid), item.id), {
+            program: item.program,
+            updatedAt: serverTimestamp(),
+            updatedBy: user.uid
+          });
+        }
+        await batch.commit();
+      }
+      await setDoc(metaRef(user.uid), {
+        schemaVersion: 1,
+        lastManualMergeAt: serverTimestamp(),
+        localProgramCount: snapshot.programs.length,
+        cloudProgramCountBeforeMerge: cloud.programs.length,
+        mergedProgramCount: mergedPrograms.length,
+        updatedBy: user.uid
+      }, { merge: true });
+      return {
+        programs: mergedPrograms,
+        importedCloudPrograms: cloudOnlyPrograms.length,
+        uploadedLocalPrograms: snapshot.programs.length,
+        mergedProgramCount: mergedPrograms.length
+      };
+    },
+
     // Real-time listeners only report cloud changes; they never mutate localStorage.
     // The UI layer must define a reviewed merge/conflict policy before applying them.
     subscribeLists(callback, onError = () => {}) {
