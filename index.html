@@ -30,10 +30,28 @@ pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font
 .item{padding:12px 0;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}.muted{color:#6b7280}
 .modal{position:fixed;inset:0;background:#0008;z-index:20;display:none;align-items:flex-end;overscroll-behavior:contain}.modal.show{display:flex}.sheet{background:white;width:100%;max-height:90vh;max-height:90dvh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;border-radius:20px 20px 0 0;padding:18px;min-height:0}.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-18px;margin:-18px -18px 12px;padding:14px 18px;background:white;border-bottom:1px solid #e5e7eb;z-index:2}.sheet-head h2{margin:0}.back-btn{padding:8px 11px;font-size:13px;white-space:nowrap}body.modal-open{overflow:hidden}
 .toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);background:#111827;color:white;padding:10px 14px;border-radius:10px;display:none;z-index:30;max-width:calc(100% - 24px);width:max-content;text-align:center;line-height:1.35;white-space:normal}
+
+#authGate{position:fixed;inset:0;z-index:100;background:#f3f4f6;display:flex;align-items:center;justify-content:center;padding:20px}
+#authGate[hidden]{display:none}
+.auth-card{width:100%;max-width:420px;background:#fff;border-radius:18px;padding:24px;box-shadow:0 8px 30px #00000012}
+.auth-card h2{font-size:22px;margin:0 0 6px}.auth-card p{font-size:14px;line-height:1.45;color:#6b7280;margin:0 0 18px}
+.auth-card label{margin-top:12px}.auth-card .btn{width:100%;margin-top:14px}
+#authStatus{font-size:13px;line-height:1.45;margin-top:12px;overflow-wrap:anywhere}
+body.auth-locked>header,body.auth-locked>#app,body.auth-locked>nav,body.auth-locked>#modal{visibility:hidden}
 </style>
 </head>
 <body>
 <header><h1>Mayer Distribution</h1><div class="sub">Program Transport by Mihai R. © <span id="appVersion">v1.5</span></div></header>
+<div id="authGate" hidden>
+ <form class="auth-card" onsubmit="event.preventDefault();loginAtStartup()">
+  <h2>Mayer Distribution</h2>
+  <p>Autentifica-te pentru a accesa programele de transport si datele sincronizate.</p>
+  <label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username" required placeholder="Email">
+  <label for="loginPassword">Parola</label><input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Parola">
+  <button id="loginButton" class="btn primary" type="submit">Autentificare</button>
+  <div id="authStatus" class="muted" role="status">Se initializeaza...</div>
+ </form>
+</div>
 <main id="app"></main>
 <nav>
 <button onclick="show('new')" id="n-new">Program nou</button>
@@ -87,6 +105,7 @@ function save(){
    oldLists=localStorage.getItem('pt_lists'); oldPrograms=localStorage.getItem('pt_programs');
    localStorage.setItem('pt_lists',JSON.stringify(lists));
    localStorage.setItem('pt_programs',JSON.stringify(programs));
+   queueSyncDiff(oldLists,oldPrograms);
    return true;
  } catch(err) {
    // Incearca sa revina la valorile existente daca stocarea nu a reusit.
@@ -205,36 +224,12 @@ function viewProgram(i){let p=programs[i];document.getElementById('app').innerHT
 function renderSettings(){
  const groups=[['Driver','Soferi'],['Auto','Auto'],['Remorca','Remorci'],['Destination','Destinatii'],['Transit','Transit'],['Ridicare','Ridicare']];
  document.getElementById('app').innerHTML=`<div class="card"><h2>Setari / Nomenclatoare</h2>${groups.map(([k,n])=>`<div class="item"><b>${n}</b><div class="muted">${lists[k].length} valori</div><button class="btn secondary" style="margin-top:7px" onclick="editList('${k}','${n}')">Administreaza</button></div>`).join('')}</div>
+ <div class="card"><h2>Cont</h2><p class="muted small">Conectat la sincronizarea cloud.</p><button class="btn secondary" style="width:100%" onclick="logoutFromApp()">Deconectare</button></div>
  <div class="card"><h2>Backup si restaurare</h2><p class="muted">Backup-ul contine nomenclatoarele si istoricul programelor. Pastreaza fisierul intr-un loc sigur.</p>
  <button class="btn secondary" style="width:100%;margin-top:6px" onclick="exportBackup()">Descarca backup</button>
  <button class="btn secondary" style="width:100%;margin-top:8px" onclick="document.getElementById('backupFile').click()">Restaureaza din backup</button>
  <input id="backupFile" type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
- <p class="muted small">Datele raman stocate pe acest dispozitiv. Backup-ul nu sincronizeaza automat alte telefoane.</p></div>
-<div class="card" id="firebaseSyncCard">
- <h2>Sincronizare cloud (test)</h2>
- <p class="muted small">Configurarea se salveaza doar in acest browser. Introdu configuratia Web a unui proiect Firebase dedicat. Nu introduce parole de utilizatori aici.</p>
- <label>Firebase API key</label><input id="fbApiKey" autocomplete="off" placeholder="AIza...">
- <label>Auth domain</label><input id="fbAuthDomain" autocomplete="off" placeholder="proiect.firebaseapp.com">
- <label>Project ID</label><input id="fbProjectId" autocomplete="off" placeholder="proiect-id">
- <label>App ID</label><input id="fbAppId" autocomplete="off" placeholder="1:...:web:...">
- <button class="btn secondary" style="width:100%;margin-top:10px" onclick="saveFirebaseConfig()">Salveaza configuratia locala</button>
- <div id="fbSetupStatus" class="muted small" style="margin-top:8px">Firebase nu este configurat.</div>
- <div id="fbAuthPanel" style="display:none">
-  <label>Email Firebase</label><input id="fbEmail" type="email" autocomplete="username" placeholder="email de test">
-  <label>Parola</label><input id="fbPassword" type="password" autocomplete="current-password" placeholder="Parola contului Firebase">
-  <button class="btn primary" style="width:100%" onclick="firebaseLogin()">Autentificare</button>
-  <button class="btn secondary" style="width:100%;margin-top:8px" onclick="firebaseLogout()">Deconectare</button>
- </div>
- <div id="fbDataPanel" style="display:none">
-  <div id="fbUserStatus" class="muted small" style="margin-top:8px"></div>
-  <button class="btn secondary" style="width:100%;margin-top:10px" onclick="firebasePreviewCloud()">Verifica datele din cloud</button>
-  <button class="btn primary" style="width:100%;margin-top:8px" onclick="firebaseImportLocal()">Import initial local → cloud</button>
-  <button class="btn secondary" style="width:100%;margin-top:8px" onclick="firebaseMergeManual()">Sincronizare manuala local ↔ cloud</button>
-  <div id="fbDataStatus" class="muted small" style="margin-top:8px">Importul este explicit si este refuzat daca exista deja date in cloud.</div>
- </div>
- <p class="muted small">Mod sigur: aceasta etapa nu modifica automat datele locale si nu aplica modificarile cloud peste localStorage. Nu este inca activata sincronizarea bidirectionala.</p>
-</div>`;
- hydrateFirebaseSettings();
+ <p class="muted small">Datele sunt pastrate local si sincronizate automat cu Firebase dupa autentificare. Recomandat: pastreaza si un backup periodic.</p></div>`;
 }
 function editList(k,n){
  const sheet=document.getElementById('modalSheet');const oldTop=sheet.scrollTop;
@@ -275,113 +270,129 @@ async function importBackup(input){
 
 const FIREBASE_CONFIG_STORAGE_KEY = 'md_firebase_web_config';
 let firebaseSyncInstance = null;
-let firebaseModulePromise = null;
-function getSavedFirebaseConfig(){
+let authListenerAttached = false;
+let syncReady = false;
+let remoteApply = false;
+let authStartInProgress = false;
+let unsubscribers = [];
+let pendingProgramUpserts = new Map();
+let pendingProgramDeletes = new Set();
+let pendingLists = false;
+let syncTimer = null;
+
+function getLegacyFirebaseConfig(){
  try { return JSON.parse(localStorage.getItem(FIREBASE_CONFIG_STORAGE_KEY)||'null'); } catch(_e) { return null; }
 }
-function saveFirebaseConfig(){
- const config={
-  apiKey:document.getElementById('fbApiKey').value.trim(),
-  authDomain:document.getElementById('fbAuthDomain').value.trim(),
-  projectId:document.getElementById('fbProjectId').value.trim(),
-  appId:document.getElementById('fbAppId').value.trim()
- };
- if(!config.apiKey||!config.authDomain||!config.projectId||!config.appId){toast('Completeaza toate cele 4 campuri Firebase.');return}
- localStorage.setItem(FIREBASE_CONFIG_STORAGE_KEY,JSON.stringify(config));
- firebaseSyncInstance=null;
- document.getElementById('fbSetupStatus').textContent='Configuratie salvata local. Apasa Autentificare pentru a verifica proiectul.';
- document.getElementById('fbAuthPanel').style.display='block';
- document.getElementById('fbDataPanel').style.display='none';
- toast('Configuratie Firebase salvata in acest browser.');
-}
 async function getFirebaseSync(){
- const config=getSavedFirebaseConfig();
- if(!config) throw new Error('Lipseste configuratia Firebase. Completeaza campurile si salveaza.');
- if(!firebaseSyncInstance){
-  if(!firebaseModulePromise) firebaseModulePromise=import('./firebase-sync.js');
-  const mod=await firebaseModulePromise;
-  firebaseSyncInstance=mod.createFirebaseSync(config);
- }
+ if(firebaseSyncInstance)return firebaseSyncInstance;
+ const legacy=getLegacyFirebaseConfig();
+ const cfgModule=await import('./firebase-config.js');
+ const config=cfgModule.firebaseConfig(legacy);
+ if(!config.apiKey||String(config.apiKey).startsWith('REPLACE_'))throw new Error('Lipseste API key Firebase din configuratia aplicatiei.');
+ const mod=await import('./firebase-sync.js');
+ firebaseSyncInstance=mod.createFirebaseSync(config);
  return firebaseSyncInstance;
 }
-async function firebaseLogin(){
- const email=document.getElementById('fbEmail').value.trim();
- const password=document.getElementById('fbPassword').value;
- if(!email||!password){toast('Introdu emailul si parola contului Firebase.');return}
- const status=document.getElementById('fbSetupStatus');
- status.textContent='Se verifica autentificarea...';
+function setAuthStatus(message){const e=document.getElementById('authStatus');if(e)e.textContent=message;}
+function showAuthGate(message){
+ syncReady=false;document.body.classList.add('auth-locked');
+ document.getElementById('authGate').hidden=false;
+ const b=document.getElementById('loginButton');if(b)b.disabled=false;
+ setAuthStatus(message||'Introdu emailul si parola pentru a continua.');
+}
+function hideAuthGate(){document.body.classList.remove('auth-locked');document.getElementById('authGate').hidden=true;}
+async function loginAtStartup(){
+ const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;
+ if(!email||!password)return;
+ const button=document.getElementById('loginButton');button.disabled=true;setAuthStatus('Se autentifica...');
+ try{
+  const sync=await getFirebaseSync();const credential=await sync.signIn(email,password);
+  document.getElementById('loginPassword').value='';await startAuthenticatedApp(credential.user);
+ }catch(err){console.error(err);button.disabled=false;setAuthStatus('Autentificarea a esuat: '+(err.message||'eroare necunoscuta'));}
+}
+async function logoutFromApp(){
+ try{
+  for(const stop of unsubscribers){try{stop()}catch(_e){}}
+  unsubscribers=[];syncReady=false;const sync=await getFirebaseSync();await sync.signOut();
+  showAuthGate('Ai fost deconectat.');
+ }catch(err){console.error(err);toast('Deconectarea a esuat: '+(err.message||''));}
+}
+async function startAuthenticatedApp(user){
+ if(authStartInProgress)return;authStartInProgress=true;showAuthGate('Se incarca si sincronizeaza datele...');
  try{
   const sync=await getFirebaseSync();
-  const credential=await sync.signIn(email,password);
-  document.getElementById('fbAuthPanel').style.display='block';
-  document.getElementById('fbDataPanel').style.display='block';
-  document.getElementById('fbUserStatus').textContent='Conectat ca '+credential.user.email+' (UID: '+credential.user.uid+').';
-  status.textContent='Autentificare reusita.';
-  document.getElementById('fbPassword').value='';
-  toast('Conectare Firebase reusita.');
- }catch(err){console.error(err);status.textContent='Eroare Firebase: '+(err.message||'necunoscuta');toast('Conectarea Firebase a esuat. Verifica configuratia, contul si regulile.')}
+  for(const stop of unsubscribers){try{stop()}catch(_e){}}unsubscribers=[];
+  const hasLocalLists=localStorage.getItem('pt_lists')!==null;
+  const localSnapshot={lists:JSON.parse(JSON.stringify(lists)),programs:JSON.parse(JSON.stringify(programs))};
+  const merged=await sync.bootstrapSnapshot(localSnapshot,hasLocalLists);
+  remoteApply=true;lists=normalizeLists(merged.lists);programs=merged.programs;
+  if(!save())throw new Error('Salvarea locala a esuat. Verifica spatiul disponibil si exporta un backup.');
+  remoteApply=false;syncReady=true;
+  unsubscribers.push(sync.subscribeLists(values=>{
+   if(!values||remoteApply||!syncReady)return;
+   if(JSON.stringify(values)!==JSON.stringify(lists)){
+    remoteApply=true;lists=normalizeLists(values);save();remoteApply=false;renderCurrentPage();
+   }
+  },err=>{console.warn('Listener liste:',err);toast('Eroare la actualizarea nomenclatoarelor cloud.')}));
+  unsubscribers.push(sync.subscribePrograms((_cloudPrograms,changes)=>{
+   if(remoteApply||!syncReady)return;
+   let changed=false;remoteApply=true;
+   for(const change of changes||[]){
+    if(change.type==='removed'){
+     const before=programs.length;programs=programs.filter(p=>String(p.id)!==String(change.id));changed=changed||programs.length!==before;
+    }else if(change.program){
+     const index=programs.findIndex(p=>String(p.id)===String(change.program.id));
+     if(index<0){programs.push(change.program);changed=true;}
+     else if(JSON.stringify(programs[index])!==JSON.stringify(change.program)){programs[index]=change.program;changed=true;}
+    }
+   }
+   if(changed){save();renderCurrentPage();}
+   remoteApply=false;
+  },err=>{console.warn('Listener programe:',err);toast('Eroare la actualizarea programelor cloud.')}));
+  hideAuthGate();document.getElementById('loginButton').disabled=false;show('new');toast('Conectat si sincronizat cu Firebase.');
+ }catch(err){remoteApply=false;syncReady=false;console.error(err);showAuthGate('Nu s-au putut incarca datele: '+(err.message||'eroare necunoscuta')+'. Verifica internetul si incearca din nou.');}
+ finally{authStartInProgress=false;}
 }
-async function firebaseLogout(){
- try{
-  if(firebaseSyncInstance) await firebaseSyncInstance.signOut();
-  document.getElementById('fbDataPanel').style.display='none';
-  document.getElementById('fbSetupStatus').textContent='Deconectat din Firebase.';
-  toast('Deconectare realizata.');
- }catch(err){console.error(err);toast('Deconectarea a esuat.')}
+function renderCurrentPage(){
+ const active=document.querySelector('nav button.active')?.id||'n-new';const page=active.replace('n-','');
+ show(['new','today','history','settings'].includes(page)?page:'new');
 }
-async function firebasePreviewCloud(){
- const status=document.getElementById('fbDataStatus');
- status.textContent='Se verifica datele din cloud...';
+function queueSyncDiff(oldListsRaw,oldProgramsRaw){
+ if(remoteApply||!syncReady)return;
+ let oldLists=null,oldPrograms=[];
+ try{oldLists=oldListsRaw===null?null:JSON.parse(oldListsRaw)}catch(_e){}
+ try{oldPrograms=oldProgramsRaw===null?[]:JSON.parse(oldProgramsRaw);if(!Array.isArray(oldPrograms))oldPrograms=[]}catch(_e){}
+ const oldMap=new Map(oldPrograms.map(p=>[String(p.id),p])),newMap=new Map(programs.map(p=>[String(p.id),p]));
+ for(const [id,p] of newMap){if(!oldMap.has(id)||JSON.stringify(oldMap.get(id))!==JSON.stringify(p)){pendingProgramUpserts.set(id,p);pendingProgramDeletes.delete(id);}}
+ for(const id of oldMap.keys()){if(!newMap.has(id)){pendingProgramUpserts.delete(id);pendingProgramDeletes.add(id);}}
+ if(JSON.stringify(oldLists)!==JSON.stringify(lists))pendingLists=true;
+ if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(flushPendingSync,650);
+}
+async function flushPendingSync(){
+ if(!syncReady||remoteApply)return;
+ const upserts=[...pendingProgramUpserts.values()],deletes=[...pendingProgramDeletes.values()],listsToWrite=pendingLists;
+ pendingProgramUpserts.clear();pendingProgramDeletes.clear();pendingLists=false;
  try{
   const sync=await getFirebaseSync();
-  const snapshot=await sync.readCloudSnapshot();
-  const count=snapshot.programs.length;
-  status.textContent='Cloud: '+(snapshot.exists?'nomenclatoare existente':'nomenclatoare inexistente')+'; '+count+' programe. Datele locale nu au fost modificate.';
-  if(snapshot.exists||count>0) status.textContent+=' Importul initial va fi blocat pentru a evita suprascrierea.';
- }catch(err){console.error(err);status.textContent='Nu s-au putut citi datele: '+(err.message||'eroare necunoscuta')}
-}
-async function firebaseImportLocal(){
- const status=document.getElementById('fbDataStatus');
- if(!confirm('Vei copia nomenclatoarele si programele locale in contul Firebase autentificat. Aceasta operatie nu sterge datele locale. Continua numai daca ai verificat ca esti in contul corect si cloud-ul este gol.')) return;
- status.textContent='Se verifica si importa datele locale...';
- try{
-  const sync=await getFirebaseSync();
-  const snapshot={lists:JSON.parse(JSON.stringify(lists)),programs:JSON.parse(JSON.stringify(programs))};
-  const result=await sync.uploadLocalSnapshot(snapshot);
-  status.textContent='Import initial reusit: '+result.importedPrograms+' programe. Datele locale au ramas nemodificate. Verifica rezultatul cu „Verifica datele din cloud”.';
-  toast('Import initial in cloud reusit.');
- }catch(err){console.error(err);status.textContent='Import oprit sau esuat: '+(err.message||'eroare necunoscuta');toast('Importul nu a fost finalizat.')}
-}
-async function firebaseMergeManual(){
- const status=document.getElementById('fbDataStatus');
- if(!confirm('Sincronizare manuala: programele existente local au prioritate la acelasi ID, iar programele gasite doar in cloud vor fi adaugate local. Nomenclatoarele locale vor inlocui nomenclatoarele din cloud. Stergerile nu se propaga. Ai exportat un backup si verificat contul Firebase?')) return;
- status.textContent='Se sincronizeaza datele locale si cloud...';
- try{
-  const sync=await getFirebaseSync();
-  const snapshot={lists:JSON.parse(JSON.stringify(lists)),programs:JSON.parse(JSON.stringify(programs))};
-  const result=await sync.mergeSnapshot(snapshot);
-  const previousPrograms=programs;
-  programs=result.programs;
-  if(!save()){
-   programs=previousPrograms;
-   status.textContent='Datele au fost scrise in cloud, dar salvarea locala a esuat. Nu repeta operatia inainte sa exporti backup-ul si sa verifici datele cloud.';
-   return;
-  }
-  current=null;
-  status.textContent='Sincronizare terminata. Programe locale trimise: '+result.uploadedLocalPrograms+'; programe recuperate din cloud: '+result.importedCloudPrograms+'; total local dupa sincronizare: '+result.mergedProgramCount+'. Stergerile nu se propaga.';
-  toast('Sincronizare manuala terminata.');
- }catch(err){console.error(err);status.textContent='Sincronizarea a esuat sau s-a oprit partial: '+(err.message||'eroare necunoscuta')+'. Verifica datele cloud inainte sa repeti.';toast('Sincronizarea nu a fost confirmata.')}
-}
-function hydrateFirebaseSettings(){
- const config=getSavedFirebaseConfig();
- if(config){
-  document.getElementById('fbApiKey').value=config.apiKey||'';
-  document.getElementById('fbAuthDomain').value=config.authDomain||'';
-  document.getElementById('fbProjectId').value=config.projectId||'';
-  document.getElementById('fbAppId').value=config.appId||'';
-  document.getElementById('fbSetupStatus').textContent='Configuratie Firebase existenta salvata in acest browser.';
-  document.getElementById('fbAuthPanel').style.display='block';
+  if(listsToWrite)await sync.upsertLists(JSON.parse(JSON.stringify(lists)));
+  for(const p of upserts)await sync.upsertProgram(p);
+  for(const id of deletes)await sync.deleteProgram(id);
+ }catch(err){
+  console.error('Sincronizare automata esuata:',err);
+  for(const p of upserts)pendingProgramUpserts.set(String(p.id),p);
+  for(const id of deletes)pendingProgramDeletes.add(id);pendingLists=pendingLists||listsToWrite;
+  toast('Sincronizarea a esuat. Verifica internetul si modifica din nou dupa reconectare.');
  }
+}
+function initializeAuthGate(){
+ showAuthGate('Se verifica sesiunea...');
+ getFirebaseSync().then(sync=>{
+  if(authListenerAttached)return;authListenerAttached=true;
+  sync.onAuthStateChanged(user=>{
+   if(user)startAuthenticatedApp(user);
+   else showAuthGate('Introdu emailul si parola pentru a continua.');
+  });
+ }).catch(err=>{console.error(err);showAuthGate('Configuratia Firebase nu este disponibila: '+(err.message||'eroare necunoscuta'));});
 }
 
 // PWA necesita HTTPS sau localhost. Nu incercam sa inregistram service worker din file://.
@@ -391,7 +402,7 @@ if(location.protocol!=='file:'){
    navigator.serviceWorker.register('./sw.js').catch(err=>console.warn('Service worker indisponibil:',err));
  }
 }
-show('new');
+initializeAuthGate();
 </script>
 </body>
 </html>
