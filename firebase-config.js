@@ -4,7 +4,7 @@
 // Replace the fallback only with the Web API key shown in Firebase Console if setting up a new device.
 export function firebaseConfig(legacyConfig = null) {
   return {
-    apiKey: legacyConfig?.apiKey || "REPLACE_WITH_MAYERDISTRIBUTION2026_WEB_API_KEY",
+    apiKey: legacyConfig?.apiKey || "AIzaSyDqCnxLvW83ZvCA0RgPJYZv-HjnsNZPwLQ",
     authDomain: legacyConfig?.authDomain || "mayerdistribution2026.firebaseapp.com",
     projectId: legacyConfig?.projectId || "mayerdistribution2026",
     appId: legacyConfig?.appId || "1:894985579760:web:01d7707cca1c3f6a3ca635"
