@@ -1,6 +1,6 @@
-const CACHE_NAME='mayer-distribution-v1.5';
+const CACHE_NAME='mayer-distribution-v1.6';
 const APP_FILES=[
- './','./index.html','./manifest.json','./favicon.ico',
+ './','./index.html','./manifest.json','./favicon.ico','./firebase-config.js','./firebase-sync.js',
  './icons/icon-192.png','./icons/icon-512.png',
  './icons/apple-touch-icon.png','./icons/favicon-32.png','./icons/favicon-48.png'
 ];
