@@ -92,6 +92,37 @@ export function createFirebaseSync(firebaseConfig) {
       };
     },
 
+    // First authenticated load: merge by stable program ID. Local record wins on collision.
+    // Existing local lists win only on a device with an established local list store.
+    async bootstrapSnapshot(localSnapshot, hasLocalLists) {
+      const user = requireUser();
+      validateSnapshot(localSnapshot);
+      const cloud = await this.readCloudSnapshot();
+      const selectedLists = hasLocalLists || !cloud.exists ? localSnapshot.lists : cloud.lists;
+      const cloudById = new Map(cloud.programs.map(program => [String(program.id), program]));
+      const localById = new Map(localSnapshot.programs.map(program => [String(program.id), program]));
+      const mergedPrograms = [...localSnapshot.programs];
+      for (const program of cloud.programs) {
+        if (!localById.has(String(program.id))) mergedPrograms.push(program);
+      }
+
+      if (!cloud.exists || JSON.stringify(cloud.lists) !== JSON.stringify(selectedLists)) {
+        await this.upsertLists(selectedLists);
+      }
+      for (const program of localSnapshot.programs) {
+        const cloudProgram = cloudById.get(String(program.id));
+        if (!cloudProgram || JSON.stringify(cloudProgram) !== JSON.stringify(program)) {
+          await this.upsertProgram(program);
+        }
+      }
+      return {
+        lists: selectedLists,
+        programs: mergedPrograms,
+        cloudPrograms: cloud.programs.length,
+        localPrograms: localSnapshot.programs.length
+      };
+    },
+
     // Explicit initial upload only. This method does not run automatically.
     // It refuses to overwrite a cloud account that already has data.
     async uploadLocalSnapshot(snapshot) {
@@ -190,7 +221,14 @@ export function createFirebaseSync(firebaseConfig) {
     subscribePrograms(callback, onError = () => {}) {
       const user = requireUser();
       return onSnapshot(programsRef(user.uid), snap => {
-        callback(snap.docs.map(item => item.data().program));
+        callback(
+          snap.docs.map(item => item.data().program),
+          snap.docChanges().map(change => ({
+            type: change.type,
+            id: change.doc.id,
+            program: change.doc.data().program
+          }))
+        );
       }, onError);
     },
 
