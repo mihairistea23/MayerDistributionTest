@@ -229,6 +229,7 @@ function renderSettings(){
   <div id="fbUserStatus" class="muted small" style="margin-top:8px"></div>
   <button class="btn secondary" style="width:100%;margin-top:10px" onclick="firebasePreviewCloud()">Verifica datele din cloud</button>
   <button class="btn primary" style="width:100%;margin-top:8px" onclick="firebaseImportLocal()">Import initial local → cloud</button>
+  <button class="btn secondary" style="width:100%;margin-top:8px" onclick="firebaseMergeManual()">Sincronizare manuala local ↔ cloud</button>
   <div id="fbDataStatus" class="muted small" style="margin-top:8px">Importul este explicit si este refuzat daca exista deja date in cloud.</div>
  </div>
  <p class="muted small">Mod sigur: aceasta etapa nu modifica automat datele locale si nu aplica modificarile cloud peste localStorage. Nu este inca activata sincronizarea bidirectionala.</p>
@@ -350,6 +351,26 @@ async function firebaseImportLocal(){
   status.textContent='Import initial reusit: '+result.importedPrograms+' programe. Datele locale au ramas nemodificate. Verifica rezultatul cu „Verifica datele din cloud”.';
   toast('Import initial in cloud reusit.');
  }catch(err){console.error(err);status.textContent='Import oprit sau esuat: '+(err.message||'eroare necunoscuta');toast('Importul nu a fost finalizat.')}
+}
+async function firebaseMergeManual(){
+ const status=document.getElementById('fbDataStatus');
+ if(!confirm('Sincronizare manuala: programele existente local au prioritate la acelasi ID, iar programele gasite doar in cloud vor fi adaugate local. Nomenclatoarele locale vor inlocui nomenclatoarele din cloud. Stergerile nu se propaga. Ai exportat un backup si verificat contul Firebase?')) return;
+ status.textContent='Se sincronizeaza datele locale si cloud...';
+ try{
+  const sync=await getFirebaseSync();
+  const snapshot={lists:JSON.parse(JSON.stringify(lists)),programs:JSON.parse(JSON.stringify(programs))};
+  const result=await sync.mergeSnapshot(snapshot);
+  const previousPrograms=programs;
+  programs=result.programs;
+  if(!save()){
+   programs=previousPrograms;
+   status.textContent='Datele au fost scrise in cloud, dar salvarea locala a esuat. Nu repeta operatia inainte sa exporti backup-ul si sa verifici datele cloud.';
+   return;
+  }
+  current=null;
+  status.textContent='Sincronizare terminata. Programe locale trimise: '+result.uploadedLocalPrograms+'; programe recuperate din cloud: '+result.importedCloudPrograms+'; total local dupa sincronizare: '+result.mergedProgramCount+'. Stergerile nu se propaga.';
+  toast('Sincronizare manuala terminata.');
+ }catch(err){console.error(err);status.textContent='Sincronizarea a esuat sau s-a oprit partial: '+(err.message||'eroare necunoscuta')+'. Verifica datele cloud inainte sa repeti.';toast('Sincronizarea nu a fost confirmata.')}
 }
 function hydrateFirebaseSettings(){
  const config=getSavedFirebaseConfig();
