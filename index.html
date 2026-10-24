@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="application-name" content="Mayer Distribution">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mayer Distribution">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/x-icon" href="./favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="./icons/favicon-48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<title>Mayer Distribution</title>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f3f4f6;color:#111827}
+header{background:#111827;color:white;padding:18px 16px calc(18px + env(safe-area-inset-top));position:sticky;top:0;z-index:5}
+h1{font-size:21px;margin:0}.sub{opacity:.7;font-size:12px;margin-top:3px}
+main{max-width:720px;margin:auto;padding:14px 12px calc(155px + env(safe-area-inset-bottom))}.card{background:white;border-radius:16px;padding:15px;margin:10px 0;box-shadow:0 2px 10px #0000000b}#app{min-width:0}#app>*{min-width:0}input[type="date"]{display:block;width:100%;max-width:100%;min-width:0;min-height:48px;box-sizing:border-box;-webkit-appearance:auto;appearance:auto}
+h2{font-size:17px;margin:0 0 12px}.transport-title{display:flex;justify-content:space-between;align-items:center}
+label{font-size:12px;font-weight:600;color:#4b5563;display:block;margin:10px 0 5px}
+select,input{width:100%;font-size:16px;padding:12px;border:1px solid #d1d5db;border-radius:11px;background:white}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.row>*{min-width:0}.desthead{min-width:0}.desthead select{min-width:0}.btn{border:0;border-radius:12px;padding:13px 15px;font-size:15px;font-weight:700;cursor:pointer}
+.primary{background:#111827;color:white;width:100%;margin-top:10px}.secondary{background:#e5e7eb;color:#111827}.add{background:#eef2ff;color:#3730a3;width:100%;margin-top:10px}
+.danger{background:#fee2e2;color:#991b1b}.small{font-size:12px}.dest{border-top:1px solid #eee;padding-top:10px;margin-top:10px}.desthead{display:flex;gap:8px;align-items:center}.desthead select{flex:1}.desthead button{flex:0 0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #ddd;padding:9px max(10px,env(safe-area-inset-left)) calc(9px + env(safe-area-inset-bottom));display:flex;gap:7px;z-index:10}
+nav button{flex:1;padding:10px 5px;border:0;background:white;border-radius:10px;font-size:12px}nav button.active{background:#111827;color:white}
+pre{white-space:pre-wrap;background:#f9fafb;border-radius:12px;padding:14px;font-size:15px;line-height:1.45;border:1px solid #e5e7eb}
+.item{padding:12px 0;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}.muted{color:#6b7280}
+.modal{position:fixed;inset:0;background:#0008;z-index:20;display:none;align-items:flex-end;overscroll-behavior:contain}.modal.show{display:flex}.sheet{background:white;width:100%;max-height:90vh;max-height:90dvh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;border-radius:20px 20px 0 0;padding:18px;min-height:0}.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-18px;margin:-18px -18px 12px;padding:14px 18px;background:white;border-bottom:1px solid #e5e7eb;z-index:2}.sheet-head h2{margin:0}.back-btn{padding:8px 11px;font-size:13px;white-space:nowrap}body.modal-open{overflow:hidden}
+.toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);background:#111827;color:white;padding:10px 14px;border-radius:10px;display:none;z-index:30;max-width:calc(100% - 24px);width:max-content;text-align:center;line-height:1.35;white-space:normal}
+</style>
+</head>
+<body>
+<header><h1>Mayer Distribution</h1><div class="sub">Program Transport by Mihai R. © <span id="appVersion">v1.5</span></div></header>
+<main id="app"></main>
+<nav>
+<button onclick="show('new')" id="n-new">Program nou</button>
+<button onclick="show('today')" id="n-today">Azi</button>
+<button onclick="show('history')" id="n-history">Istoric</button>
+<button onclick="show('settings')" id="n-settings">Setari</button>
+</nav>
+<div id="modal" class="modal"><div class="sheet" id="modalSheet"></div></div>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+const APP_VERSION = "v1.5";
+document.getElementById("appVersion").textContent = APP_VERSION;
+const initialData = {
+  "Driver": [],
+  "Ridicare": [],
+  "Transit": [],
+  "Destination": [],
+  "Auto": [],
+  "Remorca": [],
+  "Paleti": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51"]
+};
+function readStored(key, fallback){
+ try { const raw=localStorage.getItem(key); return raw===null?fallback:JSON.parse(raw); }
+ catch(err){ console.warn('Date locale invalide pentru '+key,err); return fallback; }
+}
+function normalizeLists(raw){
+ const out={};
+ for(const key of Object.keys(initialData)){
+   const source=raw && Array.isArray(raw[key]) ? raw[key] : initialData[key];
+   out[key]=source.map(v=>String(v??'').trim()).filter(Boolean);
+ }
+ // Elimina doar valorile folosite anterior accidental ca antete in dropdown-uri.
+ for(const [key,header] of [['Driver','Driver'],['Auto','Auto'],['Transit','Transit'],['Destination','Destination']]){
+   out[key]=out[key].filter(v=>v!==header);
+ }
+ // Migrare de la versiunea initiala, care avea paletii 1-50; fisierul Excel contine si 51.
+ if(out.Paleti.length===50 && out.Paleti.every((v,i)=>v===String(i+1))) out.Paleti.push('51');
+ return out;
+}
+let storedLists=readStored('pt_lists',null);
+let lists=normalizeLists(storedLists);
+let programs=readStored('pt_programs',[]);
+if(!Array.isArray(programs)) programs=[];
+let current = null;
+
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function save(){
+ let oldLists=null, oldPrograms=null;
+ try {
+   oldLists=localStorage.getItem('pt_lists'); oldPrograms=localStorage.getItem('pt_programs');
+   localStorage.setItem('pt_lists',JSON.stringify(lists));
+   localStorage.setItem('pt_programs',JSON.stringify(programs));
+   return true;
+ } catch(err) {
+   // Incearca sa revina la valorile existente daca stocarea nu a reusit.
+   try { oldLists===null?localStorage.removeItem('pt_lists'):localStorage.setItem('pt_lists',oldLists); } catch(_e) {}
+   try { oldPrograms===null?localStorage.removeItem('pt_programs'):localStorage.setItem('pt_programs',oldPrograms); } catch(_e) {}
+   console.error('Nu s-au putut salva datele locale',err);
+   toast('Salvarea a esuat. Exporta un backup sau elibereaza spatiu in browser.');
+   return false;
+ }
+}
+function toast(t){let e=document.getElementById('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2600)}
+function opts(arr, selected='', placeholder='Selecteaza...'){
+ return `<option value="">${placeholder}</option>`+arr.map(x=>`<option ${x===selected?'selected':''} value="${esc(x)}">${esc(x)}</option>`).join('');
+}
+function today(){let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function fmtDate(v){if(!v)return '';let [y,m,d]=v.split('-');return `${d}/${m}/${y}`}
+function blankTransport(){return {driver:'',auto:'',remorca:'',ridicare:'',transit:'',transitPaleti:'',destinations:[{destination:'',paleti:''}]}}
+function show(page){
+ document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+ document.getElementById('n-'+page)?.classList.add('active');
+ if(page==='new') renderNew(); if(page==='today') renderToday(); if(page==='history') renderHistory(); if(page==='settings') renderSettings();
+}
+function renderNew(){
+ if(!current) current={date:today(), transports:[blankTransport()]};
+ document.getElementById('app').innerHTML=`<div class="card"><h2>Program nou</h2>
+ <label>Data</label><input type="date" value="${current.date}" onchange="current.date=this.value">
+ </div><div id="transports"></div>
+ <button class="btn add" onclick="addTransport()">+ Adauga transport</button>
+ <button class="btn primary" onclick="preview()">Previzualizeaza</button>`;
+ renderTransports();
+}
+function renderTransports(){
+ document.getElementById('transports').innerHTML=current.transports.map((t,i)=>`
+ <div class="card"><div class="transport-title"><h2>Transport ${i+1}</h2>${current.transports.length>1?`<button class="btn danger small" onclick="removeTransport(${i})">Sterge</button>`:''}</div>
+ <label>Sofer *</label><select onchange="current.transports[${i}].driver=this.value">${opts(lists.Driver,t.driver,'Selecteaza sofer...')}</select>
+ <div class="row"><div><label>Auto</label><select onchange="current.transports[${i}].auto=this.value">${opts(lists.Auto,t.auto,'Fara auto')}</select></div>
+ <div><label>Remorca</label><select onchange="current.transports[${i}].remorca=this.value">${opts(lists.Remorca,t.remorca,'Fara remorca')}</select></div></div>
+ <div class="row"><div><label>Ridicare (optional)</label><select onchange="current.transports[${i}].ridicare=this.value">${opts(lists.Ridicare,t.ridicare)}</select></div>
+ <div><label>Transit (optional)</label><select onchange="current.transports[${i}].transit=this.value">${opts(lists.Transit,t.transit)}</select><label>Paleti Transit (optional)</label><select onchange="current.transports[${i}].transitPaleti=this.value">${opts(lists.Paleti,t.transitPaleti||'','Paleti')}</select></div></div>
+ <label>Destinatii *</label>${t.destinations.map((d,j)=>`<div class="dest"><div class="desthead">
+ <select onchange="current.transports[${i}].destinations[${j}].destination=this.value">${opts(lists.Destination,d.destination,'Selecteaza destinatie...')}</select>
+ <select style="max-width:100px" onchange="current.transports[${i}].destinations[${j}].paleti=this.value">${opts(lists.Paleti,d.paleti,'Paleti')}</select>
+ ${t.destinations.length>1?`<button class="btn danger" onclick="removeDest(${i},${j})">×</button>`:''}</div></div>`).join('')}
+ <button class="btn add" onclick="addDest(${i})">+ Adauga destinatie</button>
+ </div>`).join('');
+}
+function addTransport(){current.transports.push(blankTransport());renderTransports()}
+function removeTransport(i){current.transports.splice(i,1);renderTransports()}
+function addDest(i){current.transports[i].destinations.push({destination:'',paleti:''});renderTransports()}
+function removeDest(i,j){current.transports[i].destinations.splice(j,1);renderTransports()}
+function buildMessage(p){
+ let out=fmtDate(p.date)+'\n\n';
+ out+=p.transports.filter(t=>t.driver).map(t=>{
+   let line=t.driver+'\n';
+   if(t.auto||t.remorca) line+=(t.auto||'')+(t.remorca?' '+t.remorca:'')+'\n';
+   if(t.ridicare) line+='Ridicare: '+t.ridicare+'\n';
+   if(t.transit) line+='Transit: '+t.transit+(t.transitPaleti?' ['+t.transitPaleti+']':'')+'\n';
+   line+=t.destinations.filter(d=>d.destination&&d.paleti).map(d=>`${d.destination} [${d.paleti}]`).join('\n');
+   return line;
+ }).join('\n\n');
+ return out.trim();
+}
+function validationError(p){
+ if(!p.date) return 'Selecteaza data programarii.';
+ if(!p.transports.length) return 'Adauga cel putin un transport.';
+ for(let i=0;i<p.transports.length;i++){
+   const t=p.transports[i];
+   if(!t.driver) return `Selecteaza soferul pentru Transport ${i+1}.`;
+   if(!t.destinations.some(d=>d.destination)) return `Selecteaza cel putin o destinatie pentru Transport ${i+1}.`;
+   if(!t.destinations.some(d=>d.destination&&d.paleti)) return `Selecteaza numarul de paleti pentru cel putin o destinatie la Transport ${i+1}.`;
+ }
+ return '';
+}
+function valid(p){return !validationError(p)}
+function preview(){
+ const error=validationError(current);
+ if(error){toast(error);return}
+ const msg=buildMessage(current);
+ document.getElementById('app').innerHTML=`<div class="card"><h2>Previzualizare</h2><pre>${esc(msg)}</pre>
+ <button class="btn secondary" onclick="renderNew()">Inapoi si modifica</button>
+ <button class="btn primary" onclick="saveAndWhatsApp()">Trimite pe WhatsApp</button></div>`;
+}
+function saveAndWhatsApp(){
+ const p=JSON.parse(JSON.stringify(current)); p.id=Date.now(); programs.unshift(p);
+ if(!save()){programs.shift();return}
+ const msg=buildMessage(p); current=null;
+ const url='https://wa.me/?text='+encodeURIComponent(msg);
+ window.location.href=url;
+}
+function renderToday(){
+ const p=programs.find(x=>x.date===today());
+ document.getElementById('app').innerHTML=p?`<div class="card"><h2>Programul de azi · ${fmtDate(p.date)}</h2><pre>${esc(buildMessage(p))}</pre><button class="btn primary" onclick="shareWhatsApp('${encodeURIComponent(buildMessage(p))}')">Trimite din nou pe WhatsApp</button></div>`:
+ `<div class="card"><h2>Nu exista program pentru azi.</h2><button class="btn primary" onclick="current=null;show('new')">+ Creeaza program</button></div>`;
+}
+function shareWhatsApp(enc){window.location.href='https://wa.me/?text='+enc}
+function renderHistory(){
+ document.getElementById('app').innerHTML=`<div class="card"><h2>Istoric</h2>${programs.length?programs.map((p,i)=>`<div class="item"><b>${fmtDate(p.date)}</b><div class="muted">${p.transports.length} transport${p.transports.length===1?'':'uri'}</div><div class="row" style="margin-top:7px"><button class="btn secondary" onclick="viewProgram(${i})">Vezi programul</button><button class="btn danger" onclick="deleteProgram(${i})">Sterge</button></div></div>`).join(''):'<div class="muted">Nu exista programe salvate.</div>'}</div>`;
+}
+function deleteProgram(i){if(i<0||i>=programs.length)return;const p=programs[i];if(!confirm(`Stergi programul din ${fmtDate(p.date)}? Aceasta actiune nu poate fi anulata.`))return;programs.splice(i,1);if(!save()){programs.splice(i,0,p);return}renderHistory();toast('Program sters')}
+function exportProgramExcel(i){
+ const p=programs[i];if(!p)return;
+ if(!window.XLSX){toast('Biblioteca Excel nu s-a incarcat. Verifica conexiunea la internet si reincarca aplicatia.');return;}
+ const headers=['Data programului','Transport','Sofer','Auto','Remorca','Ridicare','Transit','Paleti Transit','Destinatie','Paleti destinatie'];
+ const rows=[headers];
+ p.transports.forEach((t,ti)=>{
+   const destinations=Array.isArray(t.destinations)&&t.destinations.length?t.destinations:[{destination:'',paleti:''}];
+   destinations.forEach(d=>rows.push([p.date||'',`Transport ${ti+1}`,t.driver||'',t.auto||'',t.remorca||'',t.ridicare||'',t.transit||'',t.transitPaleti||'',d.destination||'',d.paleti||'']));
+ });
+ const ws=XLSX.utils.aoa_to_sheet(rows);
+ ws['!cols']=[{wch:16},{wch:14},{wch:28},{wch:16},{wch:16},{wch:20},{wch:24},{wch:16},{wch:28},{wch:16}];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Program transport');
+ XLSX.writeFile(wb,`MayerDistribution-program-${p.date||today()}.xlsx`);
+ toast('Fisierul Excel a fost generat.');
+}
+function viewProgram(i){let p=programs[i];document.getElementById('app').innerHTML=`<div class="card"><h2>${fmtDate(p.date)}</h2><pre>${esc(buildMessage(p))}</pre><button class="btn secondary" style="width:100%;margin-top:8px" onclick="exportProgramExcel(${i})">Exporta Excel</button><button class="btn primary" onclick="shareWhatsApp('${encodeURIComponent(buildMessage(p))}')">Trimite din nou pe WhatsApp</button><button class="btn secondary" style="margin-top:8px" onclick="show('history')">Inapoi</button></div>`}
+function renderSettings(){
+ const groups=[['Driver','Soferi'],['Auto','Auto'],['Remorca','Remorci'],['Destination','Destinatii'],['Transit','Transit'],['Ridicare','Ridicare']];
+ document.getElementById('app').innerHTML=`<div class="card"><h2>Setari / Nomenclatoare</h2>${groups.map(([k,n])=>`<div class="item"><b>${n}</b><div class="muted">${lists[k].length} valori</div><button class="btn secondary" style="margin-top:7px" onclick="editList('${k}','${n}')">Administreaza</button></div>`).join('')}</div>
+ <div class="card"><h2>Backup si restaurare</h2><p class="muted">Backup-ul contine nomenclatoarele si istoricul programelor. Pastreaza fisierul intr-un loc sigur.</p>
+ <button class="btn secondary" style="width:100%;margin-top:6px" onclick="exportBackup()">Descarca backup</button>
+ <button class="btn secondary" style="width:100%;margin-top:8px" onclick="document.getElementById('backupFile').click()">Restaureaza din backup</button>
+ <input id="backupFile" type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
+ <p class="muted small">Datele raman stocate pe acest dispozitiv. Backup-ul nu sincronizeaza automat alte telefoane.</p></div>
+<div class="card" id="firebaseSyncCard">
+ <h2>Sincronizare cloud (test)</h2>
+ <p class="muted small">Configurarea se salveaza doar in acest browser. Introdu configuratia Web a unui proiect Firebase dedicat. Nu introduce parole de utilizatori aici.</p>
+ <label>Firebase API key</label><input id="fbApiKey" autocomplete="off" placeholder="AIza...">
+ <label>Auth domain</label><input id="fbAuthDomain" autocomplete="off" placeholder="proiect.firebaseapp.com">
+ <label>Project ID</label><input id="fbProjectId" autocomplete="off" placeholder="proiect-id">
+ <label>App ID</label><input id="fbAppId" autocomplete="off" placeholder="1:...:web:...">
+ <button class="btn secondary" style="width:100%;margin-top:10px" onclick="saveFirebaseConfig()">Salveaza configuratia locala</button>
+ <div id="fbSetupStatus" class="muted small" style="margin-top:8px">Firebase nu este configurat.</div>
+ <div id="fbAuthPanel" style="display:none">
+  <label>Email Firebase</label><input id="fbEmail" type="email" autocomplete="username" placeholder="email de test">
+  <label>Parola</label><input id="fbPassword" type="password" autocomplete="current-password" placeholder="Parola contului Firebase">
+  <button class="btn primary" style="width:100%" onclick="firebaseLogin()">Autentificare</button>
+  <button class="btn secondary" style="width:100%;margin-top:8px" onclick="firebaseLogout()">Deconectare</button>
+ </div>
+ <div id="fbDataPanel" style="display:none">
+  <div id="fbUserStatus" class="muted small" style="margin-top:8px"></div>
+  <button class="btn secondary" style="width:100%;margin-top:10px" onclick="firebasePreviewCloud()">Verifica datele din cloud</button>
+  <button class="btn primary" style="width:100%;margin-top:8px" onclick="firebaseImportLocal()">Import initial local → cloud</button>
+  <div id="fbDataStatus" class="muted small" style="margin-top:8px">Importul este explicit si este refuzat daca exista deja date in cloud.</div>
+ </div>
+ <p class="muted small">Mod sigur: aceasta etapa nu modifica automat datele locale si nu aplica modificarile cloud peste localStorage. Nu este inca activata sincronizarea bidirectionala.</p>
+</div>`;
+ hydrateFirebaseSettings();
+}
+function editList(k,n){
+ const sheet=document.getElementById('modalSheet');const oldTop=sheet.scrollTop;
+ const rows=lists[k].map((v,i)=>`<div class="item"><input id="li-${i}" value="${esc(v)}"><button class="btn danger" style="margin-top:6px" onclick="delItem('${k}',${i})">Sterge</button></div>`).join('');
+ sheet.innerHTML=`<div class="sheet-head"><h2>${n}</h2><button class="btn secondary back-btn" onclick="closeModal()">Inapoi</button></div>${rows}<button class="btn add" onclick="addItem('${k}')">+ Adauga</button><button class="btn primary" onclick="saveList('${k}')">Salveaza</button>`;
+ sheet.scrollTop=oldTop;
+ const modal=document.getElementById('modal');
+ if(!modal.classList.contains('show')){window._mayerScrollY=window.scrollY||window.pageYOffset||0;document.body.style.position='fixed';document.body.style.top=`-${window._mayerScrollY}px`;document.body.style.width='100%';document.body.classList.add('modal-open');modal.classList.add('show');}
+}
+function saveList(k){let arr=[];for(let i=0;i<lists[k].length;i++){let v=document.getElementById('li-'+i).value.trim();if(v&&!arr.includes(v))arr.push(v)}const previous=lists[k];lists[k]=arr;if(!save()){lists[k]=previous;return}closeModal();renderSettings();toast('Lista salvata')}
+function addItem(k){lists[k].push('');editList(k,document.querySelector('#modalSheet h2').textContent)}
+function delItem(k,i){lists[k].splice(i,1);editList(k,document.querySelector('#modalSheet h2').textContent)}
+function closeModal(){const modal=document.getElementById('modal');if(!modal.classList.contains('show'))return;modal.classList.remove('show');document.body.classList.remove('modal-open');document.body.style.position='';document.body.style.top='';document.body.style.width='';window.scrollTo(0,window._mayerScrollY||0);}
+function exportBackup(){
+ const payload={format:'ProgramTransportBackup',version:1,exportedAt:new Date().toISOString(),lists,programs};
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=`MayerDistribution-backup-${today()}.json`;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup descarcat');
+}
+async function importBackup(input){
+ const file=input.files&&input.files[0]; if(!file)return;
+ try{
+   const payload=JSON.parse(await file.text());
+   if(!payload||payload.format!=='ProgramTransportBackup'||payload.version!==1||!payload.lists||!Array.isArray(payload.programs)) throw new Error('Format de backup nerecunoscut.');
+   for(const key of Object.keys(initialData)) if(!Array.isArray(payload.lists[key])) throw new Error('Backup incomplet: lipseste lista '+key+'.');
+   for(const p of payload.programs){
+     if(!p||typeof p.date!=='string'||!Array.isArray(p.transports)) throw new Error('Backup-ul contine un program invalid.');
+     for(const t of p.transports) if(!t||!Array.isArray(t.destinations)) throw new Error('Backup-ul contine un transport invalid.');
+   }
+   if(!confirm('Restaurarea va inlocui nomenclatoarele si istoricul de pe acest dispozitiv. Continua?')) return;
+   const previousLists=lists,previousPrograms=programs;
+   lists=normalizeLists(payload.lists);programs=payload.programs;
+   if(!save()){lists=previousLists;programs=previousPrograms;return}
+   current=null;renderSettings();toast('Backup restaurat cu succes');
+ }catch(err){console.error(err);toast(err.message||'Fisierul de backup nu a putut fi citit.')}finally{input.value=''}
+}
+
+const FIREBASE_CONFIG_STORAGE_KEY = 'md_firebase_web_config';
+let firebaseSyncInstance = null;
+let firebaseModulePromise = null;
+function getSavedFirebaseConfig(){
+ try { return JSON.parse(localStorage.getItem(FIREBASE_CONFIG_STORAGE_KEY)||'null'); } catch(_e) { return null; }
+}
+function saveFirebaseConfig(){
+ const config={
+  apiKey:document.getElementById('fbApiKey').value.trim(),
+  authDomain:document.getElementById('fbAuthDomain').value.trim(),
+  projectId:document.getElementById('fbProjectId').value.trim(),
+  appId:document.getElementById('fbAppId').value.trim()
+ };
+ if(!config.apiKey||!config.authDomain||!config.projectId||!config.appId){toast('Completeaza toate cele 4 campuri Firebase.');return}
+ localStorage.setItem(FIREBASE_CONFIG_STORAGE_KEY,JSON.stringify(config));
+ firebaseSyncInstance=null;
+ document.getElementById('fbSetupStatus').textContent='Configuratie salvata local. Apasa Autentificare pentru a verifica proiectul.';
+ document.getElementById('fbAuthPanel').style.display='block';
+ document.getElementById('fbDataPanel').style.display='none';
+ toast('Configuratie Firebase salvata in acest browser.');
+}
+async function getFirebaseSync(){
+ const config=getSavedFirebaseConfig();
+ if(!config) throw new Error('Lipseste configuratia Firebase. Completeaza campurile si salveaza.');
+ if(!firebaseSyncInstance){
+  if(!firebaseModulePromise) firebaseModulePromise=import('./firebase-sync.js');
+  const mod=await firebaseModulePromise;
+  firebaseSyncInstance=mod.createFirebaseSync(config);
+ }
+ return firebaseSyncInstance;
+}
+async function firebaseLogin(){
+ const email=document.getElementById('fbEmail').value.trim();
+ const password=document.getElementById('fbPassword').value;
+ if(!email||!password){toast('Introdu emailul si parola contului Firebase.');return}
+ const status=document.getElementById('fbSetupStatus');
+ status.textContent='Se verifica autentificarea...';
+ try{
+  const sync=await getFirebaseSync();
+  const credential=await sync.signIn(email,password);
+  document.getElementById('fbAuthPanel').style.display='block';
+  document.getElementById('fbDataPanel').style.display='block';
+  document.getElementById('fbUserStatus').textContent='Conectat ca '+credential.user.email+' (UID: '+credential.user.uid+').';
+  status.textContent='Autentificare reusita.';
+  document.getElementById('fbPassword').value='';
+  toast('Conectare Firebase reusita.');
+ }catch(err){console.error(err);status.textContent='Eroare Firebase: '+(err.message||'necunoscuta');toast('Conectarea Firebase a esuat. Verifica configuratia, contul si regulile.')}
+}
+async function firebaseLogout(){
+ try{
+  if(firebaseSyncInstance) await firebaseSyncInstance.signOut();
+  document.getElementById('fbDataPanel').style.display='none';
+  document.getElementById('fbSetupStatus').textContent='Deconectat din Firebase.';
+  toast('Deconectare realizata.');
+ }catch(err){console.error(err);toast('Deconectarea a esuat.')}
+}
+async function firebasePreviewCloud(){
+ const status=document.getElementById('fbDataStatus');
+ status.textContent='Se verifica datele din cloud...';
+ try{
+  const sync=await getFirebaseSync();
+  const snapshot=await sync.readCloudSnapshot();
+  const count=snapshot.programs.length;
+  status.textContent='Cloud: '+(snapshot.exists?'nomenclatoare existente':'nomenclatoare inexistente')+'; '+count+' programe. Datele locale nu au fost modificate.';
+  if(snapshot.exists||count>0) status.textContent+=' Importul initial va fi blocat pentru a evita suprascrierea.';
+ }catch(err){console.error(err);status.textContent='Nu s-au putut citi datele: '+(err.message||'eroare necunoscuta')}
+}
+async function firebaseImportLocal(){
+ const status=document.getElementById('fbDataStatus');
+ if(!confirm('Vei copia nomenclatoarele si programele locale in contul Firebase autentificat. Aceasta operatie nu sterge datele locale. Continua numai daca ai verificat ca esti in contul corect si cloud-ul este gol.')) return;
+ status.textContent='Se verifica si importa datele locale...';
+ try{
+  const sync=await getFirebaseSync();
+  const snapshot={lists:JSON.parse(JSON.stringify(lists)),programs:JSON.parse(JSON.stringify(programs))};
+  const result=await sync.uploadLocalSnapshot(snapshot);
+  status.textContent='Import initial reusit: '+result.importedPrograms+' programe. Datele locale au ramas nemodificate. Verifica rezultatul cu „Verifica datele din cloud”.';
+  toast('Import initial in cloud reusit.');
+ }catch(err){console.error(err);status.textContent='Import oprit sau esuat: '+(err.message||'eroare necunoscuta');toast('Importul nu a fost finalizat.')}
+}
+function hydrateFirebaseSettings(){
+ const config=getSavedFirebaseConfig();
+ if(config){
+  document.getElementById('fbApiKey').value=config.apiKey||'';
+  document.getElementById('fbAuthDomain').value=config.authDomain||'';
+  document.getElementById('fbProjectId').value=config.projectId||'';
+  document.getElementById('fbAppId').value=config.appId||'';
+  document.getElementById('fbSetupStatus').textContent='Configuratie Firebase existenta salvata in acest browser.';
+  document.getElementById('fbAuthPanel').style.display='block';
+ }
+}
+
+// PWA necesita HTTPS sau localhost. Nu incercam sa inregistram service worker din file://.
+if(location.protocol!=='file:'){
+ const manifest=document.createElement('link');manifest.rel='manifest';manifest.href='./manifest.json';document.head.appendChild(manifest);
+ if('serviceWorker' in navigator && window.isSecureContext){
+   navigator.serviceWorker.register('./sw.js').catch(err=>console.warn('Service worker indisponibil:',err));
+ }
+}
+show('new');
+</script>
+</body>
+</html>
