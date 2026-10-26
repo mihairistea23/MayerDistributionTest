@@ -272,7 +272,6 @@ async function importBackup(input){
  }catch(err){console.error(err);toast(err.message||'Fisierul de backup nu a putut fi citit.')}finally{input.value=''}
 }
 
-const FIREBASE_CONFIG_STORAGE_KEY = 'md_firebase_web_config';
 let firebaseSyncInstance = null;
 let authListenerAttached = false;
 let syncReady = false;
@@ -284,14 +283,10 @@ let pendingProgramDeletes = new Set();
 let pendingLists = false;
 let syncTimer = null;
 
-function getLegacyFirebaseConfig(){
- try { return JSON.parse(localStorage.getItem(FIREBASE_CONFIG_STORAGE_KEY)||'null'); } catch(_e) { return null; }
-}
 async function getFirebaseSync(){
  if(firebaseSyncInstance)return firebaseSyncInstance;
- const legacy=getLegacyFirebaseConfig();
  const cfgModule=await import('./firebase-config.js');
- const config=cfgModule.firebaseConfig(legacy);
+ const config=cfgModule.firebaseConfig();
  if(!config.apiKey||String(config.apiKey).startsWith('REPLACE_'))throw new Error('Lipseste API key Firebase din configuratia aplicatiei.');
  const mod=await import('./firebase-sync.js');
  firebaseSyncInstance=mod.createFirebaseSync(config);
