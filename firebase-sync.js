@@ -92,13 +92,13 @@ export function createFirebaseSync(firebaseConfig) {
       };
     },
 
-    // First authenticated load: merge by stable program ID. Local record wins on collision.
-    // Existing local lists win only on a device with an established local list store.
+    // First authenticated load: cloud lists are authoritative once present.
+    // Local lists seed the cloud only when no cloud list document exists. Programs are merged by stable ID.
     async bootstrapSnapshot(localSnapshot, hasLocalLists) {
       const user = requireUser();
       validateSnapshot(localSnapshot);
       const cloud = await this.readCloudSnapshot();
-      const selectedLists = hasLocalLists || !cloud.exists ? localSnapshot.lists : cloud.lists;
+      const selectedLists = cloud.exists ? cloud.lists : localSnapshot.lists;
       const cloudById = new Map(cloud.programs.map(program => [String(program.id), program]));
       const localById = new Map(localSnapshot.programs.map(program => [String(program.id), program]));
       const mergedPrograms = [...localSnapshot.programs];
