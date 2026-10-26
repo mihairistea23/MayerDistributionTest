@@ -1,12 +1,11 @@
 // Browser Firebase configuration for Mayer Distribution.
-// The API key is intentionally reused from the legacy setup on browsers that already
-// configured the test build. Firebase web API keys are client identifiers, not passwords.
-// Replace the fallback only with the Web API key shown in Firebase Console if setting up a new device.
+// The Firebase web API key is a client identifier, not a password.
+// Existing browser-saved configuration (md_firebase_web_config) takes precedence.
 export function firebaseConfig(legacyConfig = null) {
   return {
-    apiKey: legacyConfig?.apiKey || "AIzaSyDqCnxLvW83ZvCA0RgPJYZv-HjnsNZPwLQ",
-    authDomain: legacyConfig?.authDomain || "mayerdistribution2026.firebaseapp.com",
-    projectId: legacyConfig?.projectId || "mayerdistribution2026",
-    appId: legacyConfig?.appId || "1:894985579760:web:01d7707cca1c3f6a3ca635"
+    apiKey: legacyConfig?.apiKey || "AIzaSyCmLmpq1RTxUTkR1G13L6Pg_CXLNvFeGcPg",
+    authDomain: legacyConfig?.authDomain || "mayerdistributiontest.firebaseapp.com",
+    projectId: legacyConfig?.projectId || "mayerdistributiontest",
+    appId: legacyConfig?.appId || "1:750431683253:web:94b358203a8b4a7a79f4fc"
   };
 }
